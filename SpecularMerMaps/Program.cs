@@ -28,13 +28,14 @@ namespace JavaBedrockUtilities
             outputDir = Path.GetFullPath(string.IsNullOrWhiteSpace(outputDir) ? "out" : outputDir).TrimEnd('\\', '/') + "/";
             if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
 
-            Type outputType = Type.mer;
-            if (args.Contains("-type")) outputType = (Type)Enum.Parse(typeof(Type), args[Array.IndexOf(args, "-type") + 1]);
+            object outputTypeObj;
+            if (args.Contains("-type")) Enum.TryParse(typeof(Type), args[Array.IndexOf(args, "-type") + 1], out outputTypeObj);
             else
             {
                 Console.Write("Output format (available values: mer, s): ");
-                outputType = (Type)Enum.Parse(typeof(Type), Console.ReadLine());
+                Enum.TryParse(typeof(Type), Console.ReadLine(), out outputTypeObj);
             }
+            Type outputType = outputTypeObj == null ? Type.mer : (Type)outputTypeObj;
 
             foreach (var path in Directory.EnumerateFiles(input, "*", SearchOption.AllDirectories))
             {
