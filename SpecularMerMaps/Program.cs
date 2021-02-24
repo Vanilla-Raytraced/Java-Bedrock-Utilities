@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace JavaBedrockUtilities
 {
-    class Program
+    partial class Program
     {
         public static LogLevel logLevel { get; private set; }
         public static string inputPath { get; private set; }
@@ -18,15 +14,20 @@ namespace JavaBedrockUtilities
 
         static void Main(string[] args)
         {
-            try { Prog(args); }
-            catch (Exception e) { Log(e, LogLevel.Error); }
+            try
+            {
+                AskForArgs(args);
+                Processing.ProcessFiles();
+            }
+            catch (Exception e) { Logging.Log(e, LogLevel.Error); }
             finally
             {
                 Console.WriteLine("Press enter to close...");
                 Console.ReadLine();
             }
         }
-        static void Prog(string[] args)
+
+        static void AskForArgs(string[] args)
         {
             object logLevelObj;
             if (args.Contains("-log")) Enum.TryParse(typeof(LogLevel), args[Array.IndexOf(args, "-log") + 1], out logLevelObj);
@@ -70,65 +71,6 @@ namespace JavaBedrockUtilities
                 Enum.TryParse(typeof(Type), Console.ReadLine(), out outputTypeObj);
             }
             outputType = outputTypeObj == null ? Type.mer : (Type)outputTypeObj;
-
-            var tasks = new List<Task>();
-            foreach (var path in Directory.EnumerateFiles(inputPath, "*.png", SearchOption.AllDirectories))
-                tasks.Add(Task.Factory.StartNew(() => ProcessFile(path)));
-            Task.WaitAll(tasks.ToArray());
-
-            void ProcessFile(string path)
-            {
-                try
-                {
-                    Log($"Processing {path}", LogLevel.Debug);
-                    var texPath = Path.GetRelativePath(inputPath, Path.GetDirectoryName(path));
-                    var texName = Path.GetFileNameWithoutExtension(path);
-                    var texType = inputType;
-                    if (inputType == (Type)(-1))
-                    {
-                        var texTypeTxt = texName.Substring(texName.LastIndexOf("_") + 1);
-                        if (Enum.TryParse(typeof(Type), texTypeTxt, out var texTypeObj)) texType = (Type)texTypeObj;
-                        else throw new NotSupportedException($"Format \"{texTypeTxt}\" isn't supported: {path}");
-                        texName = texName.Substring(0, texName.Length - texTypeTxt.Length - 1);
-                    }
-                    var outputName = $"{outputPath}{texPath}/{texName}_{Enum.GetName(typeof(Type), outputType)}.png";
-                    if (!Directory.Exists(outputPath + texPath)) Directory.CreateDirectory(outputPath + texPath);
-
-                    Log($"Converting {Path.GetRelativePath(inputPath, path)} from {texType} to {outputType}", LogLevel.Debug);
-                    using (Bitmap source = new Bitmap(path))
-                    {
-                        var dest = new Bitmap(source.Width, source.Height);
-
-                        for (int x = 0; x < source.Width; x++)
-                            for (int y = 0; y < source.Height; y++)
-                                dest.SetPixel(x, y, Data.ToColor(Data.Parse(source.GetPixel(x, y), texType), outputType));
-                        dest.Save(outputName, ImageFormat.Png);
-                    }
-
-                    Log($"Saved at {Path.GetFullPath(outputName)}", LogLevel.Success);
-                }
-                catch (NotSupportedException e) { Log(e.Message, LogLevel.Warning); }
-                catch (Exception e) { Log(e, LogLevel.Error); }
-            }
         }
-
-        public enum LogLevel { Debug, Info, Success, Warning, Error }
-        static void Log(Exception e, LogLevel level = LogLevel.Error) => Log(e.ToString(), level);
-        static void Log(string message, LogLevel level = LogLevel.Info)
-        {
-            if (level < logLevel) return;
-            Console.ForegroundColor = LogColor(level);
-            Console.WriteLine(message);
-            Console.ForegroundColor = LogColor(LogLevel.Info);
-        }
-        static ConsoleColor LogColor(LogLevel level) => level switch
-        {
-            LogLevel.Debug => ConsoleColor.DarkGray,
-            LogLevel.Info => ConsoleColor.Gray,
-            LogLevel.Success => ConsoleColor.Green,
-            LogLevel.Warning => ConsoleColor.Yellow,
-            LogLevel.Error => ConsoleColor.Red,
-            _ => ConsoleColor.Gray
-        };
     }
 }
