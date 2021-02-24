@@ -10,6 +10,16 @@ namespace JavaBedrockUtilities
     {
         static void Main(string[] args)
         {
+            try { Prog(args); }
+            catch (Exception e) { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine(e); Console.ForegroundColor = ConsoleColor.White; }
+            finally
+            {
+                Console.WriteLine("Press enter to close...");
+                Console.ReadLine();
+            }
+        }
+        static void Prog(string[] args)
+        {
             string input;
             if (args.Contains("-input")) input = args[Array.IndexOf(args, "-input") + 1];
             else
