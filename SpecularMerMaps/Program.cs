@@ -10,15 +10,25 @@ namespace JavaBedrockUtilities
     {
         static void Main(string[] args)
         {
-            string input = "";
+            string input;
             if (args.Contains("-input")) input = args[Array.IndexOf(args, "-input") + 1];
             else
             {
-                Console.Write("Input dir: ");
+                Console.Write("Input dir (default: in): ");
                 input = Console.ReadLine();
             }
+            input = Path.GetFullPath(string.IsNullOrWhiteSpace(input) ? "in" : input).TrimEnd('\\', '/') + "/";
 
-            string outputDir = "";
+            object inputTypeObj;
+            if (args.Contains("-type")) Enum.TryParse(typeof(Type), args[Array.IndexOf(args, "-type") + 1], out inputTypeObj);
+            else
+            {
+                Console.Write("Input format (default: auto; available: auto, mer, s): ");
+                Enum.TryParse(typeof(Type), Console.ReadLine(), out inputTypeObj);
+            }
+            var inputType = inputTypeObj == null ? (Type)(-1) : (Type)inputTypeObj;
+
+            string outputDir;
             if (args.Contains("-output")) outputDir = args[Array.IndexOf(args, "-output") + 1];
             else
             {
@@ -32,17 +42,21 @@ namespace JavaBedrockUtilities
             if (args.Contains("-type")) Enum.TryParse(typeof(Type), args[Array.IndexOf(args, "-type") + 1], out outputTypeObj);
             else
             {
-                Console.Write("Output format (available values: mer, s): ");
+                Console.Write("Output format (default: mer; available: mer, s): ");
                 Enum.TryParse(typeof(Type), Console.ReadLine(), out outputTypeObj);
             }
-            Type outputType = outputTypeObj == null ? Type.mer : (Type)outputTypeObj;
+            var outputType = outputTypeObj == null ? Type.mer : (Type)outputTypeObj;
 
             foreach (var path in Directory.EnumerateFiles(input, "*", SearchOption.AllDirectories))
             {
                 var texName = Path.GetFileNameWithoutExtension(path);
-                var texTypeTxt = texName.Substring(texName.LastIndexOf("_") + 1);
-                var texType = (Type)Enum.Parse(typeof(Type), texTypeTxt);
-                texName = texName.Substring(0, texName.Length - texTypeTxt.Length - 1);
+                var texType = inputType;
+                if (inputType == (Type)(-1))
+                {
+                    var texTypeTxt = texName.Substring(texName.LastIndexOf("_") + 1);
+                    texType = (Type)Enum.Parse(typeof(Type), texTypeTxt);
+                    texName = texName.Substring(0, texName.Length - texTypeTxt.Length - 1);
+                }
                 var outputName = $"{outputDir}{texName}_{Enum.GetName(typeof(Type), outputType)}.png";
                 using (Bitmap source = new Bitmap(path))
                 {
