@@ -57,7 +57,7 @@ namespace JavaBedrockUtilities
             }
             var outputType = outputTypeObj == null ? Type.mer : (Type)outputTypeObj;
 
-            foreach (var path in Directory.EnumerateFiles(input, "*", SearchOption.AllDirectories))
+            foreach (var path in Directory.EnumerateFiles(input, "*.png", SearchOption.AllDirectories))
             {
                 var texName = Path.GetFileNameWithoutExtension(path);
                 var texType = inputType;
