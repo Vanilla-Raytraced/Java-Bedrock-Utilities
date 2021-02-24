@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace JavaBedrockUtilities
 {
@@ -46,7 +48,6 @@ namespace JavaBedrockUtilities
                 outputDir = Console.ReadLine();
             }
             outputDir = Path.GetFullPath(string.IsNullOrWhiteSpace(outputDir) ? "out" : outputDir).TrimEnd('\\', '/') + "/";
-            if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
 
             object outputTypeObj;
             if (args.Contains("-type")) Enum.TryParse(typeof(Type), args[Array.IndexOf(args, "-type") + 1], out outputTypeObj);
@@ -57,27 +58,39 @@ namespace JavaBedrockUtilities
             }
             var outputType = outputTypeObj == null ? Type.mer : (Type)outputTypeObj;
 
+            var tasks = new List<Task>();
             foreach (var path in Directory.EnumerateFiles(input, "*.png", SearchOption.AllDirectories))
-            {
-                var texName = Path.GetFileNameWithoutExtension(path);
-                var texType = inputType;
-                if (inputType == (Type)(-1))
-                {
-                    var texTypeTxt = texName.Substring(texName.LastIndexOf("_") + 1);
-                    texType = (Type)Enum.Parse(typeof(Type), texTypeTxt);
-                    texName = texName.Substring(0, texName.Length - texTypeTxt.Length - 1);
-                }
-                var outputName = $"{outputDir}{texName}_{Enum.GetName(typeof(Type), outputType)}.png";
-                using (Bitmap source = new Bitmap(path))
-                {
-                    var dest = new Bitmap(source.Width, source.Height);
+                tasks.Add(Task.Factory.StartNew(() => ProcessFile(path)));
+            Task.WaitAll(tasks.ToArray());
 
-                    for (int x = 0; x < source.Width; x++)
-                        for (int y = 0; y < source.Height; y++)
-                            dest.SetPixel(x, y, Data.ToColor(Data.Parse(source.GetPixel(x, y), texType), outputType));
-                    dest.Save(outputName, ImageFormat.Png);
+            void ProcessFile(string path)
+            {
+                try
+                {
+                    var texPath = Path.GetRelativePath(input, Path.GetDirectoryName(path));
+                    var texName = Path.GetFileNameWithoutExtension(path);
+                    var texType = inputType;
+                    if (inputType == (Type)(-1))
+                    {
+                        var texTypeTxt = texName.Substring(texName.LastIndexOf("_") + 1);
+                        if (Enum.TryParse(typeof(Type), texTypeTxt, out var texTypeObj)) texType = (Type)texTypeObj;
+                        else throw new NotSupportedException("Format " + texTypeTxt + " isn't supported");
+                        texName = texName.Substring(0, texName.Length - texTypeTxt.Length - 1);
+                    }
+                    var outputName = $"{outputDir}{texPath}/{texName}_{Enum.GetName(typeof(Type), outputType)}.png";
+                    if (!Directory.Exists(outputDir + texPath)) Directory.CreateDirectory(outputDir + texPath);
+                    using (Bitmap source = new Bitmap(path))
+                    {
+                        var dest = new Bitmap(source.Width, source.Height);
+
+                        for (int x = 0; x < source.Width; x++)
+                            for (int y = 0; y < source.Height; y++)
+                                dest.SetPixel(x, y, Data.ToColor(Data.Parse(source.GetPixel(x, y), texType), outputType));
+                        dest.Save(outputName, ImageFormat.Png);
+                    }
+                    Console.WriteLine($"Saved at {outputName}");
                 }
-                Console.WriteLine($"Saved at {outputName}");
+                catch (Exception e) { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine(e); Console.ForegroundColor = ConsoleColor.White; }
             }
         }
     }
